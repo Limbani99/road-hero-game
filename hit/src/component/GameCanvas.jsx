@@ -28,6 +28,12 @@ const GUNFIRE_VOLUME = 0.6
 // Changed: preload the AB crossing sound once and keep its volume configurable.
 const AB_SOUND_PATH = '/sounds/ab%20pass%20sound.mp3'
 const AB_SOUND_VOLUME = 0.5
+// Changed: preload the VO crossing sound once and keep its volume configurable.
+const VO_SOUND_PATH = '/sounds/vo.mp3'
+const VO_SOUND_VOLUME = 0.5
+// Changed: preload the LB pass sound once and keep its volume configurable.
+const LB_SOUND_PATH = '/sounds/lb%20pass%20sound.mp3'
+const LB_SOUND_VOLUME = 0.5
 // Changed: use the existing villain-hit sound asset.
 const HIT_SOUND_PATH = '/sounds/hit%20sounds.mp3'
 const HIT_SOUND_VOLUME = 0.6
@@ -40,11 +46,23 @@ GUNFIRE_AUDIO.volume = GUNFIRE_VOLUME
 const AB_AUDIO = new Audio(AB_SOUND_PATH)
 AB_AUDIO.preload = 'auto'
 AB_AUDIO.volume = AB_SOUND_VOLUME
+const VO_AUDIO = new Audio(VO_SOUND_PATH)
+VO_AUDIO.preload = 'auto'
+VO_AUDIO.volume = VO_SOUND_VOLUME
+const LB_AUDIO = new Audio(LB_SOUND_PATH)
+LB_AUDIO.preload = 'auto'
+LB_AUDIO.volume = LB_SOUND_VOLUME
 const HIT_AUDIO = new Audio(HIT_SOUND_PATH)
 HIT_AUDIO.preload = 'auto'
 HIT_AUDIO.volume = HIT_SOUND_VOLUME
+const VILLAIN_SOUND_CONFIG = {
+  AB: { source: AB_AUDIO, volume: AB_SOUND_VOLUME },
+  VO: { source: VO_AUDIO, volume: VO_SOUND_VOLUME },
+}
 const GUNFIRE_UNLOCK_STATE = { unlocked: false, pending: false }
 const AB_UNLOCK_STATE = { unlocked: false, pending: false }
+const VO_UNLOCK_STATE = { unlocked: false, pending: false }
+const LB_UNLOCK_STATE = { unlocked: false, pending: false }
 const HIT_UNLOCK_STATE = { unlocked: false, pending: false }
 
 function unlockAudio(audio, state, volume) {
@@ -80,28 +98,31 @@ function unlockAudio(audio, state, volume) {
 function unlockGameAudio() {
   unlockAudio(GUNFIRE_AUDIO, GUNFIRE_UNLOCK_STATE, GUNFIRE_VOLUME)
   unlockAudio(AB_AUDIO, AB_UNLOCK_STATE, AB_SOUND_VOLUME)
+  unlockAudio(VO_AUDIO, VO_UNLOCK_STATE, VO_SOUND_VOLUME)
+  unlockAudio(LB_AUDIO, LB_UNLOCK_STATE, LB_SOUND_VOLUME)
   unlockAudio(HIT_AUDIO, HIT_UNLOCK_STATE, HIT_SOUND_VOLUME)
 }
 
-function stopAbSound(pedestrian) {
-  if (!pedestrian.abAudio) return
+function stopVillainSound(villain) {
+  if (!villain.villainAudio) return
 
-  pedestrian.abAudio.pause()
+  villain.villainAudio.pause()
   try {
-    pedestrian.abAudio.currentTime = 0
+    villain.villainAudio.currentTime = 0
   } catch {
     // Audio may not have loaded far enough to seek yet.
   }
 }
 
-function playAbSound(pedestrian, game, muted) {
-  if (pedestrian.soundPlayed || game.over || game.paused) return
-  pedestrian.soundPlayed = true
-  if (muted || !pedestrian.abAudio) return
+function playVillainSound(villain, game, muted) {
+  if (villain.soundPlayed || game.over || game.paused) return
+  villain.soundPlayed = true
+  const sound = VILLAIN_SOUND_CONFIG[villain.villainType?.name]
+  if (muted || !sound || !villain.villainAudio) return
 
   try {
-    pedestrian.abAudio.currentTime = 0
-    const playback = pedestrian.abAudio.play()
+    villain.villainAudio.currentTime = 0
+    const playback = villain.villainAudio.play()
     if (playback && typeof playback.catch === 'function') {
       playback.catch(() => {
         // Audio is optional; a blocked sound must not interrupt gameplay.
@@ -110,6 +131,12 @@ function playAbSound(pedestrian, game, muted) {
   } catch {
     // Audio is optional; a blocked sound must not interrupt gameplay.
   }
+}
+
+function playLbPassSound(pedestrian, game, muted) {
+  if (pedestrian.lbSoundPlayed || game.over || game.paused) return
+  pedestrian.lbSoundPlayed = true
+  playAudioClone(LB_AUDIO, LB_SOUND_VOLUME, muted)
 }
 
 function playAudioClone(source, volume, muted) {
@@ -348,11 +375,13 @@ class Pedestrian {
     this.villainImage = villainImage
     this.isGoon = Boolean(villainType)
     this.soundPlayed = false
-    this.abAudio = villainType?.name === 'AB' ? AB_AUDIO.cloneNode() : null
-    if (this.abAudio) {
-      this.abAudio.preload = 'auto'
-      this.abAudio.volume = AB_SOUND_VOLUME
+    const villainSound = VILLAIN_SOUND_CONFIG[villainType?.name]
+    this.villainAudio = villainSound ? villainSound.source.cloneNode() : null
+    if (this.villainAudio) {
+      this.villainAudio.preload = 'auto'
+      this.villainAudio.volume = villainSound.volume
     }
+    this.lbSoundPlayed = false
     this.walkPhase = Math.random() * Math.PI * 2
     this.radius = 16
     this.color = PEDESTRIAN_COLORS[Math.floor(Math.random() * PEDESTRIAN_COLORS.length)]
@@ -416,7 +445,7 @@ class Pedestrian {
   startDeath() {
     this.deathKind = this.villainType.type
     this.deathElapsed = 0
-    stopAbSound(this)
+    stopVillainSound(this)
   }
 
   drawVillain(context) {
@@ -620,7 +649,7 @@ function GameCanvas() {
 
   useEffect(() => {
     mutedRef.current = muted
-    if (muted) gameRef.current?.pedestrians.forEach(stopAbSound)
+    if (muted) gameRef.current?.pedestrians.forEach(stopVillainSound)
     window.localStorage.setItem(MUTE_STORAGE_KEY, String(muted))
   }, [muted])
 
@@ -702,14 +731,20 @@ function GameCanvas() {
             }
           }
           pedestrian.update(delta, targeted)
-          if (pedestrian.villainType?.name === 'AB' && !targeted) {
-            playAbSound(pedestrian, game, mutedRef.current)
+          if (
+            (pedestrian.villainType?.name === 'AB' ||
+              pedestrian.villainType?.name === 'VO') &&
+            !targeted
+          ) {
+            playVillainSound(pedestrian, game, mutedRef.current)
           }
-          if (pedestrian.remove || (
-            !pedestrian.deathKind &&
+          const passedRoad = !pedestrian.deathKind &&
             pedestrian.x >= GAME_WIDTH + (pedestrian.villainType?.height || 28)
-          )) {
-            stopAbSound(pedestrian)
+          if (pedestrian.remove || passedRoad) {
+            if (passedRoad && pedestrian.villainType?.name === 'LB') {
+              playLbPassSound(pedestrian, game, mutedRef.current)
+            }
+            stopVillainSound(pedestrian)
             game.pedestrians.splice(index, 1)
           }
         }
@@ -750,7 +785,7 @@ function GameCanvas() {
 
         if (remaining === 0 || game.lives <= 0) {
           game.over = true
-          game.pedestrians.forEach(stopAbSound)
+          game.pedestrians.forEach(stopVillainSound)
         }
       }
 
@@ -771,7 +806,7 @@ function GameCanvas() {
     frameId = requestAnimationFrame(draw)
     return () => {
       cancelAnimationFrame(frameId)
-      game.pedestrians.forEach(stopAbSound)
+      game.pedestrians.forEach(stopVillainSound)
       if (gameRef.current === game) gameRef.current = null
     }
   }, [runId])

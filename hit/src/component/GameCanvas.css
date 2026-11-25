@@ -1,0 +1,223 @@
+.road-hero-page {
+  align-items: center;
+  background: #080d18;
+  display: flex;
+  height: 100dvh;
+  justify-content: center;
+  overflow: hidden;
+  width: 100vw;
+}
+
+/* Desktop: frame a fixed 9:16 game screen like a phone. */
+.phone-frame {
+  aspect-ratio: 9 / 16;
+  background: #111827;
+  border: 10px solid #111827;
+  border-radius: 40px;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 55%);
+  box-sizing: content-box;
+  overflow: hidden;
+  padding: 8px;
+  width: min(360px, calc(100vw - 48px), calc((100dvh - 48px) * 0.5625));
+}
+
+.game-screen {
+  aspect-ratio: 9 / 16;
+  background: #dbeafe;
+  border-radius: 26px;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.game-canvas {
+  display: block;
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  touch-action: none;
+  width: 100%;
+}
+
+/* Mobile: fill the phone viewport without a frame, while preserving the game ratio. */
+@media (max-width: 700px) {
+  .phone-frame {
+    align-items: center;
+    aspect-ratio: auto;
+    background: #080d18;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    box-sizing: border-box;
+    display: flex;
+    height: 100dvh;
+    justify-content: center;
+    padding: 0;
+    width: 100vw;
+  }
+
+  .game-screen {
+    border-radius: 0;
+    height: auto;
+    max-height: 100dvh;
+    width: min(100vw, 56.25dvh);
+  }
+}
+
+.game-hud {
+  align-items: center;
+  background: linear-gradient(180deg, rgb(15 23 42 / 88%), rgb(15 23 42 / 55%));
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  left: 0;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 12px;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 2;
+}
+
+.hud-stat {
+  align-items: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-label {
+  color: #cbd5e1;
+  font-size: clamp(0.7rem, 3.2vw, 0.85rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud-stat strong {
+  color: #fff;
+  font-size: clamp(1.35rem, 6vw, 1.8rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.hud-stat:nth-child(2) strong {
+  color: #f87171;
+  letter-spacing: 0.04em;
+}
+
+.time-warning strong {
+  color: #fca5a5;
+}
+
+/* Changed: keep the sound toggle reachable in the game HUD. */
+.mute-button {
+  align-items: center;
+  background: rgb(15 23 42 / 72%);
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  height: 48px;
+  justify-content: center;
+  justify-self: end;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0;
+  pointer-events: auto;
+  width: 48px;
+}
+
+.mute-button svg {
+  fill: none;
+  height: 24px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 24px;
+}
+
+.mute-button:focus-visible {
+  outline: 3px solid #fde68a;
+  outline-offset: 2px;
+}
+
+.game-over-panel {
+  align-items: center;
+  background: rgb(15 23 42 / 93%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  justify-content: center;
+  overflow: hidden;
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    20px
+    calc(24px + env(safe-area-inset-bottom));
+  position: absolute;
+  text-align: center;
+  z-index: 4;
+}
+
+.game-over-kicker {
+  color: #bae6fd;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.game-over-panel h2 {
+  color: #fff;
+  font-size: clamp(2.4rem, 10vw, 3.5rem);
+  letter-spacing: -0.05em;
+  margin: 0;
+}
+
+.final-score {
+  color: #e2e8f0;
+  font-size: 1.25rem;
+  margin: 10px 0 24px;
+}
+
+.final-score strong {
+  color: #fde68a;
+  font-variant-numeric: tabular-nums;
+}
+
+.restart-button {
+  background: #fbbf24;
+  border: 0;
+  border-radius: 999px;
+  color: #172554;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-height: 56px;
+  min-width: min(80vw, 280px);
+  padding: 14px 28px;
+}
+
+.restart-button:active {
+  background: #fcd34d;
+}
+
+.restart-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Keep long leaderboards scrollable if rendered by the existing game-over UI. */
+.leaderboard-list {
+  max-height: min(28dvh, 220px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  width: min(100%, 340px);
+}

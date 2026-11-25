@@ -1,0 +1,11 @@
+{
+  "name": "career-bridge",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix hit run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "start:backend": "npm --prefix backend start",
+    "build": "npm --prefix hit run build",
+    "lint": "npm --prefix hit run lint"
+  }
+}

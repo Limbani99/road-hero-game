@@ -1,34 +1,173 @@
 .road-hero-page {
   align-items: center;
-  background: #080d18;
+  background: #07111f;
   display: flex;
   height: 100dvh;
   justify-content: center;
   overflow: hidden;
+  position: relative;
   width: 100vw;
 }
 
-/* Desktop: frame a fixed 9:16 game screen like a phone. */
+.road-hero-page::before,
+.road-hero-page::after {
+  border-radius: 50%;
+  content: "";
+  filter: blur(80px);
+  height: 320px;
+  pointer-events: none;
+  position: absolute;
+  width: 320px;
+}
+
+.road-hero-page::before {
+  background: rgb(14 165 233 / 12%);
+  left: -120px;
+  top: -120px;
+}
+
+.road-hero-page::after {
+  background: rgb(16 185 129 / 10%);
+  bottom: -150px;
+  right: -120px;
+}
+
 .phone-frame {
+  align-items: center;
   aspect-ratio: 9 / 16;
-  background: #111827;
-  border: 10px solid #111827;
-  border-radius: 40px;
-  box-shadow: 0 24px 70px rgb(0 0 0 / 55%);
-  box-sizing: content-box;
+  background: #082337;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 30px;
+  box-shadow: 0 32px 100px rgb(0 0 0 / 55%);
+  box-sizing: border-box;
+  display: flex;
+  height: auto;
+  max-height: calc(100dvh - 32px);
   overflow: hidden;
-  padding: 8px;
-  width: min(360px, calc(100vw - 48px), calc((100dvh - 48px) * 0.5625));
+  position: relative;
+  width: min(440px, calc(100vw - 32px), calc((100dvh - 32px) * 0.5625));
+  z-index: 1;
 }
 
 .game-screen {
-  aspect-ratio: 9 / 16;
-  background: #dbeafe;
-  border-radius: 26px;
+  background: #07111f;
+  border-radius: inherit;
   height: 100%;
   overflow: hidden;
   position: relative;
   width: 100%;
+  z-index: 1;
+}
+
+.home-screen {
+  align-items: center;
+  background:
+    radial-gradient(ellipse at 50% 52%, rgb(56 189 248 / 17%), transparent 44%),
+    linear-gradient(160deg, #0b3150, #082337 55%, #07111f);
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: calc(34px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+  position: absolute;
+  text-align: center;
+  z-index: 5;
+}
+
+.home-kicker {
+  background: rgb(125 211 252 / 10%);
+  border: 1px solid rgb(125 211 252 / 25%);
+  border-radius: 999px;
+  color: #bae6fd;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  padding: 8px 14px;
+}
+
+.home-heading p {
+  color: #7dd3fc;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  margin: 0 0 6px;
+}
+
+.home-heading h1 {
+  color: #fff;
+  font-size: clamp(2.7rem, 12vw, 4rem);
+  font-weight: 950;
+  letter-spacing: -0.07em;
+  line-height: 0.98;
+  margin: 0;
+  text-shadow: 0 5px 22px rgb(0 0 0 / 28%);
+}
+
+.home-heading h1 span {
+  color: #fbbf24;
+}
+
+.home-subtitle {
+  color: #cbd5e1;
+  display: block;
+  font-size: 0.9rem;
+  margin-top: 12px;
+}
+
+.home-car-art {
+  display: block;
+  filter: drop-shadow(0 20px 20px rgb(0 0 0 / 28%));
+  height: auto;
+  max-height: 34dvh;
+  object-fit: contain;
+  width: min(100%, 360px);
+}
+
+.home-actions {
+  width: min(100%, 300px);
+}
+
+.start-button {
+  align-items: center;
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgb(245 158 11 / 22%);
+  color: #172554;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 58px;
+  padding: 12px 20px;
+  position: relative;
+  transition: transform 120ms ease, filter 120ms ease;
+  width: 100%;
+}
+
+.start-button span {
+  font-size: 1.4rem;
+  position: absolute;
+  right: 20px;
+}
+
+.start-button:active {
+  filter: brightness(1.05);
+  transform: scale(0.98);
+}
+
+.start-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.home-actions p {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  margin: 12px 0 0;
 }
 
 .game-canvas {
@@ -40,38 +179,35 @@
   width: 100%;
 }
 
-/* Mobile: fill the phone viewport without a frame, while preserving the game ratio. */
 @media (max-width: 700px) {
   .phone-frame {
-    align-items: center;
     aspect-ratio: auto;
-    background: #080d18;
     border: 0;
     border-radius: 0;
     box-shadow: none;
-    box-sizing: border-box;
-    display: flex;
-    height: 100dvh;
-    justify-content: center;
-    padding: 0;
+    height: 100%;
+    max-height: none;
     width: 100vw;
   }
 
   .game-screen {
     border-radius: 0;
-    height: auto;
-    max-height: 100dvh;
-    width: min(100vw, 56.25dvh);
+    height: 100%;
+    width: 100%;
   }
 }
 
 .game-hud {
   align-items: center;
-  background: linear-gradient(180deg, rgb(15 23 42 / 88%), rgb(15 23 42 / 55%));
+  background: linear-gradient(180deg, rgb(7 17 31 / 94%), rgb(7 17 31 / 55%), transparent);
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 42px 42px;
+  gap: 7px;
   left: 0;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 12px;
+  padding:
+    calc(12px + env(safe-area-inset-top))
+    12px
+    16px;
   pointer-events: none;
   position: absolute;
   right: 0;
@@ -81,23 +217,28 @@
 
 .hud-stat {
   align-items: center;
+  background: rgb(8 35 55 / 78%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 14px;
   color: #fff;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  padding: 7px 4px;
 }
 
 .hud-label {
-  color: #cbd5e1;
-  font-size: clamp(0.7rem, 3.2vw, 0.85rem);
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  color: #bae6fd;
+  font-size: clamp(0.55rem, 2.5vw, 0.68rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .hud-stat strong {
   color: #fff;
-  font-size: clamp(1.35rem, 6vw, 1.8rem);
+  font-size: clamp(1rem, 4.8vw, 1.3rem);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
@@ -111,25 +252,26 @@
   color: #fca5a5;
 }
 
-/* Changed: keep the sound toggle reachable in the game HUD. */
+.home-button,
 .mute-button {
   align-items: center;
-  background: rgb(15 23 42 / 72%);
-  border: 1px solid rgb(255 255 255 / 35%);
-  border-radius: 12px;
+  background: rgb(8 35 55 / 88%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 50%;
   color: #fff;
   cursor: pointer;
   display: flex;
-  height: 48px;
+  height: 42px;
   justify-content: center;
   justify-self: end;
-  min-height: 48px;
-  min-width: 48px;
+  min-height: 42px;
+  min-width: 42px;
   padding: 0;
   pointer-events: auto;
-  width: 48px;
+  width: 42px;
 }
 
+.home-button svg,
 .mute-button svg {
   fill: none;
   height: 24px;
@@ -140,14 +282,27 @@
   width: 24px;
 }
 
+.home-button:focus-visible,
 .mute-button:focus-visible {
   outline: 3px solid #fde68a;
   outline-offset: 2px;
 }
 
+@media (max-height: 600px) {
+  .home-screen {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+
+  .home-car-art {
+    max-height: 26dvh;
+  }
+}
+
 .game-over-panel {
   align-items: center;
-  background: rgb(15 23 42 / 93%);
+  background: rgb(2 10 20 / 82%);
+  backdrop-filter: blur(8px);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -163,8 +318,18 @@
   z-index: 4;
 }
 
+.game-over-card {
+  background: linear-gradient(160deg, #102d43, #0b1c2d 72%);
+  border: 1px solid rgb(125 211 252 / 24%);
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 45%);
+  max-width: 340px;
+  padding: 28px 22px;
+  width: 100%;
+}
+
 .game-over-kicker {
-  color: #bae6fd;
+  color: #7dd3fc;
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -191,9 +356,9 @@
 }
 
 .restart-button {
-  background: #fbbf24;
+  background: linear-gradient(135deg, #fde047, #f59e0b);
   border: 0;
-  border-radius: 999px;
+  border-radius: 16px;
   color: #172554;
   cursor: pointer;
   font: inherit;
@@ -202,6 +367,7 @@
   min-height: 56px;
   min-width: min(80vw, 280px);
   padding: 14px 28px;
+  box-shadow: 0 10px 24px rgb(245 158 11 / 22%);
 }
 
 .restart-button:active {

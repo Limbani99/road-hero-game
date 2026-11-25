@@ -209,6 +209,11 @@ const VILLAIN_IMAGES = VILLAIN_TYPES.map((villain) => {
   image.src = villain.image
   return image
 })
+const COUPLE_CAR_IMAGE = new Image()
+COUPLE_CAR_IMAGE.onerror = () => {
+  console.error(`Could not load couple car image: ${COUPLE_CAR_IMAGE.src}`)
+}
+COUPLE_CAR_IMAGE.src = '/image/car%20with%20hero%20and%20heroine.png'
 
 // This workspace stores the supplied hero at public/image/hero.png.
 const HERO_IMAGE = new Image()
@@ -599,6 +604,35 @@ function drawMuzzleFlash(context, game, timestamp) {
   context.restore()
 }
 
+function drawQuoteFeature(context) {
+  if (COUPLE_CAR_IMAGE.complete && COUPLE_CAR_IMAGE.naturalWidth) {
+    const imageWidth = 270
+    const imageHeight = imageWidth * COUPLE_CAR_IMAGE.naturalHeight /
+      COUPLE_CAR_IMAGE.naturalWidth
+    context.drawImage(COUPLE_CAR_IMAGE, (GAME_WIDTH - imageWidth) / 2, 164, imageWidth, imageHeight)
+  }
+
+  context.save()
+  context.fillStyle = 'rgb(15 23 42 / 88%)'
+  context.strokeStyle = 'rgb(251 191 36 / 85%)'
+  context.lineWidth = 1.5
+  context.shadowColor = 'rgb(15 23 42 / 35%)'
+  context.shadowBlur = 10
+  context.beginPath()
+  context.roundRect(14, 102, 332, 60, 14)
+  context.fill()
+  context.shadowBlur = 0
+  context.stroke()
+
+  context.fillStyle = '#fff'
+  context.font = '700 14px system-ui, sans-serif'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.fillText('Ek baar jo maine commitment kar di...', GAME_WIDTH / 2, 123, 310)
+  context.fillText('uske baad toh main khud ki bhi nahi sunta', GAME_WIDTH / 2, 143, 310)
+  context.restore()
+}
+
 function drawScene(context, game, timestamp) {
   context.fillStyle = '#dbeafe'
   context.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
@@ -620,6 +654,8 @@ function drawScene(context, game, timestamp) {
   context.stroke()
   context.setLineDash([])
 
+  drawQuoteFeature(context)
+
   for (let index = 0; index < game.pedestrians.length; index += 1) {
     game.pedestrians[index].draw(context)
   }
@@ -638,6 +674,7 @@ function GameCanvas() {
   const canvasRef = useRef(null)
   const gameRef = useRef(null)
   const [runId, setRunId] = useState(0)
+  const [isHome, setIsHome] = useState(true)
   const [score, setScore] = useState(0)
   const [lives, setLives] = useState(3)
   const [seconds, setSeconds] = useState(GAME_DURATION)
@@ -660,6 +697,8 @@ function GameCanvas() {
   }
 
   useEffect(() => {
+    if (isHome) return undefined
+
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d', { alpha: false })
     if (!canvas || !context) return undefined
@@ -669,6 +708,9 @@ function GameCanvas() {
       pedestrians: [],
       effects: [],
       bullets: [],
+      viewScale: 1,
+      viewOffsetX: 0,
+      viewOffsetY: 0,
       score: 0,
       lives: 3,
       startTime: performance.now(),
@@ -686,11 +728,33 @@ function GameCanvas() {
     setLives(3)
     setSeconds(GAME_DURATION)
 
-    // Keep the 360x640 game world fixed; DPR only sharpens its backing bitmap.
+    // Keep the 360x640 game world fixed and scale it uniformly to the container.
     const pixelRatio = window.devicePixelRatio || 1
-    canvas.width = Math.round(GAME_WIDTH * pixelRatio)
-    canvas.height = Math.round(GAME_HEIGHT * pixelRatio)
-    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+    const resizeCanvas = () => {
+      const bounds = canvas.getBoundingClientRect()
+      canvas.width = Math.max(1, Math.round(bounds.width * pixelRatio))
+      canvas.height = Math.max(1, Math.round(bounds.height * pixelRatio))
+      game.viewScale = Math.min(
+        bounds.width / GAME_WIDTH,
+        bounds.height / GAME_HEIGHT,
+      )
+      game.viewOffsetX = (bounds.width - GAME_WIDTH * game.viewScale) / 2
+      game.viewOffsetY = (bounds.height - GAME_HEIGHT * game.viewScale) / 2
+    }
+    resizeCanvas()
+    const resizeObserver = new ResizeObserver(resizeCanvas)
+    resizeObserver.observe(canvas)
+
+    const applyGameTransform = () => {
+      context.setTransform(
+        pixelRatio * game.viewScale,
+        0,
+        0,
+        pixelRatio * game.viewScale,
+        pixelRatio * game.viewOffsetX,
+        pixelRatio * game.viewOffsetY,
+      )
+    }
 
     let frameId
     const draw = (timestamp) => {
@@ -702,7 +766,10 @@ function GameCanvas() {
       )
       const remaining = Math.max(0, Math.ceil(GAME_DURATION - elapsed))
       const difficulty = Math.floor(elapsed / 15)
-      context.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
+      context.setTransform(1, 0, 0, 1, 0, 0)
+      context.fillStyle = '#070b12'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      applyGameTransform()
       drawScene(context, game, timestamp)
 
       if (!game.over) {
@@ -805,17 +872,31 @@ function GameCanvas() {
 
     frameId = requestAnimationFrame(draw)
     return () => {
+      resizeObserver.disconnect()
       cancelAnimationFrame(frameId)
       game.pedestrians.forEach(stopVillainSound)
       if (gameRef.current === game) gameRef.current = null
     }
-  }, [runId])
+  }, [isHome, runId])
 
   const restart = () => {
     setScore(0)
     setLives(3)
     setSeconds(GAME_DURATION)
     setRunId((currentRun) => currentRun + 1)
+  }
+
+  const startGame = () => {
+    unlockGameAudio()
+    setScore(0)
+    setLives(3)
+    setSeconds(GAME_DURATION)
+    setRunId((currentRun) => currentRun + 1)
+    setIsHome(false)
+  }
+
+  const goHome = () => {
+    setIsHome(true)
   }
 
   const attackAtPointer = (event) => {
@@ -837,8 +918,8 @@ function GameCanvas() {
     event.preventDefault()
     const bounds = event.currentTarget.getBoundingClientRect()
     // Convert the scaled phone-screen position back to the fixed game coordinates.
-    const x = ((event.clientX - bounds.left) * GAME_WIDTH) / bounds.width
-    const y = ((event.clientY - bounds.top) * GAME_HEIGHT) / bounds.height
+    const x = (event.clientX - bounds.left - game.viewOffsetX) / game.viewScale
+    const y = (event.clientY - bounds.top - game.viewOffsetY) / game.viewScale
     let target = null
     let targetPart = null
 
@@ -875,61 +956,99 @@ function GameCanvas() {
   return (
     <section className="phone-frame" aria-label="Road Hero game">
       <div className="game-screen">
-        <div className="game-hud">
-          <div className="hud-stat">
-            <span className="hud-label">Score</span>
-            <strong>{score}</strong>
+        {isHome ? (
+          <div className="home-screen">
+            <div className="home-kicker">Made By Mann Patel</div>
+            <div className="home-heading">
+              <p>READY FOR THE ROAD?</p>
+              <h1>ROAD <span>HERO</span></h1>
+              <span className="home-subtitle">Keep your aim sharp. Protect the road.</span>
+            </div>
+            <img
+              className="home-car-art"
+              src="/image/car%20with%20hero%20and%20heroine.png"
+              alt="A hero and heroines riding in a car"
+            />
+            <div className="home-actions">
+              <button type="button" className="start-button" onClick={startGame}>
+                Play game
+                <span aria-hidden="true">→</span>
+              </button>
+              <p>Tap a character to aim and attack</p>
+            </div>
           </div>
-          <div className="hud-stat">
-            <span className="hud-label">Lives</span>
-            <strong aria-label={`${lives} lives`}>
-              {'♥'.repeat(lives)}{'♡'.repeat(3 - lives)}
-            </strong>
-          </div>
-          <div className={`hud-stat ${seconds <= 10 ? 'time-warning' : ''}`}>
-            <span className="hud-label">Time</span>
-            <strong>{seconds}s</strong>
-          </div>
-          {/* Changed: persistent mute toggle for gunfire audio. */}
-          <button
-            type="button"
-            className="mute-button"
-            onPointerDown={unlockGameAudio}
-            onClick={toggleMute}
-            aria-label={muted ? 'Unmute sound' : 'Mute sound'}
-            aria-pressed={muted}
-            title={muted ? 'Unmute sound' : 'Mute sound'}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M11 5 6 9H3v6h3l5 4V5Z" />
-              {muted ? (
-                <path d="m16 9 5 6m0-6-5 6" />
-              ) : (
-                <>
-                  <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-                  <path d="M18 6a9 9 0 0 1 0 12" />
-                </>
-              )}
-            </svg>
-          </button>
-        </div>
+        ) : (
+          <>
+            <div className="game-hud">
+              <div className="hud-stat">
+                <span className="hud-label">Score</span>
+                <strong>{score}</strong>
+              </div>
+              <div className="hud-stat">
+                <span className="hud-label">Lives</span>
+                <strong aria-label={`${lives} lives`}>
+                  {'♥'.repeat(lives)}{'♡'.repeat(3 - lives)}
+                </strong>
+              </div>
+              <div className={`hud-stat ${seconds <= 10 ? 'time-warning' : ''}`}>
+                <span className="hud-label">Time</span>
+                <strong>{seconds}s</strong>
+              </div>
+              <button
+                type="button"
+                className="home-button"
+                onClick={goHome}
+                aria-label="Go to home"
+                title="Home"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m3 10 9-7 9 7" />
+                  <path d="M5 9v12h14V9M9 21v-7h6v7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="mute-button"
+                onPointerDown={unlockGameAudio}
+                onClick={toggleMute}
+                aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+                aria-pressed={muted}
+                title={muted ? 'Unmute sound' : 'Mute sound'}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                  {muted ? (
+                    <path d="m16 9 5 6m0-6-5 6" />
+                  ) : (
+                    <>
+                      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                      <path d="M18 6a9 9 0 0 1 0 12" />
+                    </>
+                  )}
+                </svg>
+              </button>
+            </div>
 
-        <canvas
-          ref={canvasRef}
-          className="game-canvas"
-          onPointerDown={attackAtPointer}
-          aria-label="Road Hero play area. Tap a character to attack."
-          role="img"
-        />
-        {gameOver && (
-          <div className="game-over-panel" role="status">
-            <p className="game-over-kicker">Run complete</p>
-            <h2>Game over</h2>
-            <p className="final-score">Final score: <strong>{score}</strong></p>
-            <button type="button" className="restart-button" onClick={restart}>
-              Play again
-            </button>
-          </div>
+            <canvas
+              ref={canvasRef}
+              className="game-canvas"
+              onPointerDown={attackAtPointer}
+              aria-label="Road Hero play area. Tap a character to attack. Ek baar jo maine commitment kar di... uske baad toh main khud ki bhi nahi sunta."
+              role="img"
+            />
+            {gameOver && (
+              <div className="game-over-panel" role="status">
+                <div className="game-over-card">
+                  <p className="game-over-kicker">Run complete</p>
+                  <h2>Game over</h2>
+                  <p className="final-score">Final score: <strong>{score}</strong></p>
+                  <button type="button" className="restart-button" onClick={restart}>
+                    Play again
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

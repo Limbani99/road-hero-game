@@ -25,6 +25,9 @@ const PEDESTRIAN_COLORS = ['#0f766e', '#7c3aed', '#b45309', '#2563eb']
 // Changed: gunfire asset and volume are configurable here.
 const GUNFIRE_SOUND_PATH = '/sound/gunfire.mp3'
 const GUNFIRE_VOLUME = 0.6
+// Changed: preload the AB crossing sound once and keep its volume configurable.
+const AB_SOUND_PATH = '/sounds/ab%20pass%20sound.mp3'
+const AB_SOUND_VOLUME = 0.5
 // Changed: use the existing villain-hit sound asset.
 const HIT_SOUND_PATH = '/sounds/hit%20sounds.mp3'
 const HIT_SOUND_VOLUME = 0.6
@@ -34,10 +37,14 @@ const MUTE_STORAGE_KEY = 'roadHeroMuted'
 const GUNFIRE_AUDIO = new Audio(GUNFIRE_SOUND_PATH)
 GUNFIRE_AUDIO.preload = 'auto'
 GUNFIRE_AUDIO.volume = GUNFIRE_VOLUME
+const AB_AUDIO = new Audio(AB_SOUND_PATH)
+AB_AUDIO.preload = 'auto'
+AB_AUDIO.volume = AB_SOUND_VOLUME
 const HIT_AUDIO = new Audio(HIT_SOUND_PATH)
 HIT_AUDIO.preload = 'auto'
 HIT_AUDIO.volume = HIT_SOUND_VOLUME
 const GUNFIRE_UNLOCK_STATE = { unlocked: false, pending: false }
+const AB_UNLOCK_STATE = { unlocked: false, pending: false }
 const HIT_UNLOCK_STATE = { unlocked: false, pending: false }
 
 function unlockAudio(audio, state, volume) {
@@ -72,7 +79,37 @@ function unlockAudio(audio, state, volume) {
 
 function unlockGameAudio() {
   unlockAudio(GUNFIRE_AUDIO, GUNFIRE_UNLOCK_STATE, GUNFIRE_VOLUME)
+  unlockAudio(AB_AUDIO, AB_UNLOCK_STATE, AB_SOUND_VOLUME)
   unlockAudio(HIT_AUDIO, HIT_UNLOCK_STATE, HIT_SOUND_VOLUME)
+}
+
+function stopAbSound(pedestrian) {
+  if (!pedestrian.abAudio) return
+
+  pedestrian.abAudio.pause()
+  try {
+    pedestrian.abAudio.currentTime = 0
+  } catch {
+    // Audio may not have loaded far enough to seek yet.
+  }
+}
+
+function playAbSound(pedestrian, game, muted) {
+  if (pedestrian.soundPlayed || game.over || game.paused) return
+  pedestrian.soundPlayed = true
+  if (muted || !pedestrian.abAudio) return
+
+  try {
+    pedestrian.abAudio.currentTime = 0
+    const playback = pedestrian.abAudio.play()
+    if (playback && typeof playback.catch === 'function') {
+      playback.catch(() => {
+        // Audio is optional; a blocked sound must not interrupt gameplay.
+      })
+    }
+  } catch {
+    // Audio is optional; a blocked sound must not interrupt gameplay.
+  }
 }
 
 function playAudioClone(source, volume, muted) {
@@ -310,6 +347,12 @@ class Pedestrian {
     this.villainType = villainType
     this.villainImage = villainImage
     this.isGoon = Boolean(villainType)
+    this.soundPlayed = false
+    this.abAudio = villainType?.name === 'AB' ? AB_AUDIO.cloneNode() : null
+    if (this.abAudio) {
+      this.abAudio.preload = 'auto'
+      this.abAudio.volume = AB_SOUND_VOLUME
+    }
     this.walkPhase = Math.random() * Math.PI * 2
     this.radius = 16
     this.color = PEDESTRIAN_COLORS[Math.floor(Math.random() * PEDESTRIAN_COLORS.length)]
@@ -373,6 +416,7 @@ class Pedestrian {
   startDeath() {
     this.deathKind = this.villainType.type
     this.deathElapsed = 0
+    stopAbSound(this)
   }
 
   drawVillain(context) {
@@ -576,6 +620,7 @@ function GameCanvas() {
 
   useEffect(() => {
     mutedRef.current = muted
+    if (muted) gameRef.current?.pedestrians.forEach(stopAbSound)
     window.localStorage.setItem(MUTE_STORAGE_KEY, String(muted))
   }, [muted])
 
@@ -657,10 +702,14 @@ function GameCanvas() {
             }
           }
           pedestrian.update(delta, targeted)
+          if (pedestrian.villainType?.name === 'AB' && !targeted) {
+            playAbSound(pedestrian, game, mutedRef.current)
+          }
           if (pedestrian.remove || (
             !pedestrian.deathKind &&
             pedestrian.x >= GAME_WIDTH + (pedestrian.villainType?.height || 28)
           )) {
+            stopAbSound(pedestrian)
             game.pedestrians.splice(index, 1)
           }
         }
@@ -699,7 +748,10 @@ function GameCanvas() {
           if (effect.age >= effect.duration) game.effects.splice(index, 1)
         }
 
-        if (remaining === 0 || game.lives <= 0) game.over = true
+        if (remaining === 0 || game.lives <= 0) {
+          game.over = true
+          game.pedestrians.forEach(stopAbSound)
+        }
       }
 
       if (timestamp - game.lastHudUpdate >= 100 || game.over) {
@@ -719,6 +771,7 @@ function GameCanvas() {
     frameId = requestAnimationFrame(draw)
     return () => {
       cancelAnimationFrame(frameId)
+      game.pedestrians.forEach(stopAbSound)
       if (gameRef.current === game) gameRef.current = null
     }
   }, [runId])
